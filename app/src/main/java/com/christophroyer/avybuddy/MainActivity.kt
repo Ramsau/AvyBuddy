@@ -5,15 +5,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.christophroyer.avybuddy.ui.theme.AvyBuddyTheme
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,34 +31,46 @@ class MainActivity : ComponentActivity() {
         setContent {
             AvyBuddyTheme {
                 // A surface container using the 'background' color from the theme
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    MeasureButtons()
-                }
+                MeasureButtons()
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-            text = "Hello $name!",
-            modifier = modifier
-    )
-}
-
 @Preview
 @Composable
-fun MeasureButtons() {
-    Row {
-        Button(onClick = {
-            var s: SoundMeasurement = SoundMeasurement();
-            s.takeMeasurement();
-        }) {
-            Text("Start Calibration")
+fun MeasureButtons(
+
+) {
+    val context = LocalContext.current
+    var measurementInProgress by remember { mutableStateOf(false) }
+    val soundMeasurement = remember { SoundMeasurement() }
+
+    if (measurementInProgress) {
+        LaunchedEffect(soundMeasurement) {
+            coroutineScope {
+                launch {
+                    soundMeasurement.runMeasurement(context)
+                }
+            }
+            measurementInProgress = false
         }
-        Button(onClick = { /*TODO*/ }) {
-            Text("Start measurement")
+    }
+
+    Column (modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
+        Row {
+            Button(onClick = {measurementInProgress = true}) {
+                Text("Start calibration")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Button(onClick = {
+                soundMeasurement.stopMeasurement()
+            }) {
+                Text("Start measurement")
+            }
+        }
+        if (soundMeasurement.measurementRunning) {
+            Text("Measurement in Progress")
         }
     }
 }
