@@ -164,10 +164,10 @@ class SoundMeasurement(private val context: Context) {
             header[21] = 0
             header[22] = 1.toByte() // mono measurement
             header[23] = 0
-            header[24] = (sampleRate as Long and 0xffL).toByte()
-            header[25] = (sampleRate as Long shr 8 and 0xffL).toByte()
-            header[26] = (sampleRate as Long shr 16 and 0xffL).toByte()
-            header[27] = (sampleRate as Long shr 24 and 0xffL).toByte()
+            header[24] = (sampleRate and 0xff).toByte()
+            header[25] = ((sampleRate shr 8) and 0xff).toByte()
+            header[26] = ((sampleRate shr 16) and 0xff).toByte()
+            header[27] = ((sampleRate shr 24) and 0xff).toByte()
             header[28] = (byteRate and 0xff).toByte()
             header[29] = (byteRate shr 8 and 0xff).toByte()
             header[30] = (byteRate shr 16 and 0xff).toByte()
@@ -185,6 +185,7 @@ class SoundMeasurement(private val context: Context) {
             header[42] = (totalAudioLen shr 16 and 0xffL).toByte()
             header[43] = (totalAudioLen shr 24 and 0xffL).toByte()
             fileOutputStream.write(header)
+            fileOutputStream.flush()
         } catch (e: java.lang.Exception) {
             e.printStackTrace()
         }
@@ -196,7 +197,6 @@ class SoundMeasurement(private val context: Context) {
         val data = ByteArray(bufferSize)
 
         createWavHeader(wav, raw.channel.size())
-
         while (raw.read(data) != -1) {
             wav.write(data)
         }

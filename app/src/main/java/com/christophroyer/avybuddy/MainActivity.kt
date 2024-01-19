@@ -20,10 +20,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.christophroyer.avybuddy.ui.theme.AvyBuddyTheme
+import com.himanshoe.charty.common.ChartDataCollection
+import com.himanshoe.charty.line.CurveLineChart
+import com.himanshoe.charty.line.config.CurvedLineChartColors
+import com.himanshoe.charty.line.config.LineConfig
+import com.himanshoe.charty.line.model.LineData
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -33,7 +39,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AvyBuddyTheme {
                 // A surface container using the 'background' color from the theme
-                MeasureButtons()
+                MeasurePage()
             }
         }
     }
@@ -41,7 +47,7 @@ class MainActivity : ComponentActivity() {
 
 @Preview
 @Composable
-fun MeasureButtons(
+fun MeasurePage(
 
 ) {
     val context = LocalContext.current
@@ -78,6 +84,31 @@ fun MeasureButtons(
         }
         if (soundMeasurement.measurementRunning) {
             Text("Measurement in Progress")
+        } else {
+            CurveLineChart(
+                dataCollection = ChartDataCollection(listOf(
+                    LineData(1F, 1),
+                    LineData(2F, 2),
+                    LineData(5F, 3),
+                    LineData(3F, 4)
+                )),
+                radiusScale = 0F,
+                chartColors = CurvedLineChartColors(
+                    contentColor = listOf(
+                        Color(0xffffaaff),
+                        Color(0xffffaaff)
+                    ),
+                    dotColor = listOf(
+                        Color(0xffffaaff),
+                        Color(0xffffaaff)
+                    ),
+                    backgroundColors = listOf(
+                        Color.White,
+                        Color.White,
+                    )
+                ),
+                lineConfig = LineConfig(false, false, 0F)
+            )
         }
     }
 }
