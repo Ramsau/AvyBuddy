@@ -16,11 +16,14 @@ import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.net.toUri
 import com.himanshoe.charty.line.model.LineData
 import kotlinx.coroutines.CancellationException
+import org.jtransforms.fft.FloatFFT_1D
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.concurrent.thread
 
 class SoundMeasurement(private val context: Context) {
@@ -39,6 +42,8 @@ class SoundMeasurement(private val context: Context) {
 
     var measurementRunning by mutableStateOf(false)
     var calibrating = false
+
+    private val chunkSize = 1000
     var results by mutableStateOf(listOf(LineData(1F, 1), LineData(2F,2)))
 
 
@@ -243,18 +248,33 @@ class SoundMeasurement(private val context: Context) {
     }
 
     fun calculateResults() {
-        var calibrationStream = FileInputStream(rawCalibrationFile)
-        var measurementStream = FileInputStream(rawMeasurementFile)
+        try {
+            val calibrationStream = FileInputStream(rawCalibrationFile)
+            val measurementStream = FileInputStream(rawMeasurementFile)
 
-        var values = ArrayList<LineData>()
-        var bytes = ByteArray(2)
-        for (i in 0..50) {
-            calibrationStream.read(bytes)
-            values.add(
-                LineData(ByteBuffer.wrap(bytes).getFloat(), i)
-            )
+            val values = ArrayList<LineData>()
+            val bytes = ByteArray(chunkSize * 2)
+            val fft = FloatFFT_1D(chunkSize.toLong())
+            var i = 0
+
+            while (calibrationStream.available() > 0) {
+                calibrationStream.read(bytes)
+                val byteBuf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                val floats = FloatArray(chunkSize, {ii -> byteBuf.getShort(ii * 2).toFloat()})
+                fft.realForward(floats)
+
+                // frequency of max response
+//                values.add(LineData(floats.indices.maxBy{floats[it]}.toFloat() * chunkSize, i++))
+                // amplitude of max frequency
+                values.add(LineData(floats.max(), i++))
+            }
+
+            results = values.toList()
+
+            calibrationStream.close()
+            measurementStream.close()
+        } catch (e: FileNotFoundException) {
+            e.printStackTrace()
         }
-
-        results = values.toList()
     }
 }
