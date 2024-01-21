@@ -14,11 +14,13 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.net.toUri
+import com.himanshoe.charty.line.model.LineData
 import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
 class SoundMeasurement(private val context: Context) {
@@ -36,6 +38,8 @@ class SoundMeasurement(private val context: Context) {
     private var recorder: AudioRecord? = null
 
     var measurementRunning by mutableStateOf(false)
+    var calibrating = false
+    var results by mutableStateOf(listOf(LineData(1F, 1), LineData(2F,2)))
 
 
     init {
@@ -47,7 +51,9 @@ class SoundMeasurement(private val context: Context) {
 
     }
 
-    fun startMeasurement() {
+    fun startMeasurement(calibration: Boolean) {
+        // set flag whether to write to calibration or result file
+        calibrating = calibration
         if (measurementRunning) return
         if (startRecorder()) {
             startPlayer()
@@ -58,6 +64,7 @@ class SoundMeasurement(private val context: Context) {
         stopPlayer()
         stopRecorder()
         createWavFile()
+        calculateResults()
     }
 
     fun startPlayer() {
@@ -105,7 +112,7 @@ class SoundMeasurement(private val context: Context) {
     }
 
     fun writeAudioDataToFile() {
-        val outputFile = rawCalibrationFile
+        val outputFile = if (calibrating) rawCalibrationFile else rawMeasurementFile
         val outputStream: FileOutputStream?
         val data = ByteArray(bufferSize / 2)
         try {
@@ -192,8 +199,8 @@ class SoundMeasurement(private val context: Context) {
     }
 
     fun createWavFile() {
-        val raw = FileInputStream(rawCalibrationFile)
-        val wav = FileOutputStream(calibrationFile)
+        val raw = FileInputStream(if (calibrating) rawCalibrationFile else rawMeasurementFile)
+        val wav = FileOutputStream(if (calibrating) calibrationFile else measurementFile)
         val data = ByteArray(bufferSize)
 
         createWavHeader(wav, raw.channel.size())
@@ -212,22 +219,42 @@ class SoundMeasurement(private val context: Context) {
         recorder = null
     }
 
-    fun playDebug() {
-        val file: File
+    fun playCalibration() {
+        playFile(calibrationFile)
+    }
+
+    fun playMeasurement() {
+        playFile(measurementFile)
+    }
+
+    fun playFile(file: File) {
         try {
-            file = calibrationFile
-        } catch (e: Exception) {
+            debugPlayer = MediaPlayer.create(context, file.toUri())
+            debugPlayer!!.setOnCompletionListener {
+                debugPlayer!!.stop()
+                debugPlayer!!.release()
+                debugPlayer = null
+            }
+
+            debugPlayer!!.start()
+        } catch(e: Exception) {
             e.printStackTrace()
-            return
+        }
+    }
+
+    fun calculateResults() {
+        var calibrationStream = FileInputStream(rawCalibrationFile)
+        var measurementStream = FileInputStream(rawMeasurementFile)
+
+        var values = ArrayList<LineData>()
+        var bytes = ByteArray(2)
+        for (i in 0..50) {
+            calibrationStream.read(bytes)
+            values.add(
+                LineData(ByteBuffer.wrap(bytes).getFloat(), i)
+            )
         }
 
-        debugPlayer = MediaPlayer.create(context, file.toUri())
-        debugPlayer!!.setOnCompletionListener {
-            debugPlayer!!.stop()
-            debugPlayer!!.release()
-            debugPlayer = null
-        }
-
-        debugPlayer!!.start()
+        results = values.toList()
     }
 }

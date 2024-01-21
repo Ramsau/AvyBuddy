@@ -51,6 +51,7 @@ fun MeasurePage(
 
 ) {
     val context = LocalContext.current
+    var calibrationInProgress by remember { mutableStateOf(false) }
     var measurementInProgress by remember { mutableStateOf(false) }
     val soundMeasurement = remember { SoundMeasurement(context) }
 
@@ -58,40 +59,47 @@ fun MeasurePage(
         LaunchedEffect(soundMeasurement) {
             coroutineScope {
                 launch {
-                    soundMeasurement.startMeasurement()
+                    soundMeasurement.startMeasurement(false)
                 }
             }
             measurementInProgress = false
         }
     }
 
+    if (calibrationInProgress) {
+        LaunchedEffect(soundMeasurement) {
+            coroutineScope {
+                launch {
+                    soundMeasurement.startMeasurement(true)
+                }
+            }
+            calibrationInProgress = false
+        }
+    }
+
     Column (modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
         Row {
-            Button(onClick = {measurementInProgress = true}) {
+            Button(onClick = {calibrationInProgress = true}) {
                 Text("Start calibration")
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Button(onClick = {
-                soundMeasurement.stopMeasurement()
-            }) {
+            Button(onClick = {measurementInProgress = true}) {
                 Text("Start measurement")
             }
         }
         Row (Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Button(onClick = { soundMeasurement.playDebug() }) {
-                Text("Play back")
+            Button(onClick = { soundMeasurement.playCalibration() }) {
+                Text("Play calibration")
+            }
+            Button(onClick = { soundMeasurement.playMeasurement() }) {
+                Text("Play measurement")
             }
         }
         if (soundMeasurement.measurementRunning) {
             Text("Measurement in Progress")
         } else {
             CurveLineChart(
-                dataCollection = ChartDataCollection(listOf(
-                    LineData(1F, 1),
-                    LineData(2F, 2),
-                    LineData(5F, 3),
-                    LineData(3F, 4)
-                )),
+                dataCollection = ChartDataCollection(soundMeasurement.results),
                 radiusScale = 0F,
                 chartColors = CurvedLineChartColors(
                     contentColor = listOf(
