@@ -89,10 +89,13 @@ fun MeasurePage(
         }
         Row (Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Button(onClick = { soundMeasurement.playCalibration() }) {
-                Text("Play calibration")
+                Text("Play C")
+            }
+            Button(onClick = { soundMeasurement.calculateResults() }) {
+                Text("Calculate")
             }
             Button(onClick = { soundMeasurement.playMeasurement() }) {
-                Text("Play measurement")
+                Text("Play M")
             }
         }
         if (soundMeasurement.measurementRunning) {

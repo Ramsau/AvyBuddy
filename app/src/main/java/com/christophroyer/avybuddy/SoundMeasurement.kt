@@ -25,6 +25,8 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.concurrent.thread
+import kotlin.math.max
+import kotlin.math.min
 
 class SoundMeasurement(private val context: Context) {
     private val sampleRate = 44100
@@ -253,20 +255,41 @@ class SoundMeasurement(private val context: Context) {
             val measurementStream = FileInputStream(rawMeasurementFile)
 
             val values = ArrayList<LineData>()
-            val bytes = ByteArray(chunkSize * 2)
-            val fft = FloatFFT_1D(chunkSize.toLong())
+//            val bytes = ByteArray(chunkSize * 2)
+//            val fft = FloatFFT_1D(chunkSize.toLong())
             var i = 0
 
-            while (calibrationStream.available() > 0) {
+            val numPeriods = 5
+            var lastFrequency = 20.0
+            while (calibrationStream.available() > 0 && measurementStream.available() > 0) {
+                var thisChunkSize = (sampleRate * numPeriods / lastFrequency).toInt()
+                if (thisChunkSize == 0) {
+                    break
+                }
+                val bytes = ByteArray(thisChunkSize * 2)
+                val fft = FloatFFT_1D(thisChunkSize.toLong())
                 calibrationStream.read(bytes)
-                val byteBuf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-                val floats = FloatArray(chunkSize, {ii -> byteBuf.getShort(ii * 2).toFloat()})
+                var byteBuf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                var floats = FloatArray(thisChunkSize, {ii -> byteBuf.getShort(ii * 2).toFloat()})
                 fft.realForward(floats)
 
                 // frequency of max response
-//                values.add(LineData(floats.indices.maxBy{floats[it]}.toFloat() * chunkSize, i++))
+                val freq = floats.indices.maxBy{floats[it]}.toFloat() * thisChunkSize
+                lastFrequency = max(freq.toDouble(), 20.0)
+                lastFrequency = min(lastFrequency, 2000.0)
+                val wavelength = 343.0 / freq
+                val depth = wavelength / 4
                 // amplitude of max frequency
-                values.add(LineData(floats.max(), i++))
+                val respCalibration = floats.max()
+
+                measurementStream.read(bytes)
+                byteBuf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+                floats = FloatArray(thisChunkSize, {ii -> byteBuf.getShort(ii * 2).toFloat()})
+                fft.realForward(floats)
+
+                val respMeasurement = floats.max()
+
+                values.add(LineData(depth, depth))
             }
 
             results = values.toList()
