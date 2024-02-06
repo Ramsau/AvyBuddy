@@ -24,6 +24,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import co.yml.charts.axis.AxisData
+import co.yml.charts.ui.linechart.LineChart
+import co.yml.charts.ui.linechart.model.IntersectionPoint
+import co.yml.charts.ui.linechart.model.Line
+import co.yml.charts.ui.linechart.model.LineChartData
+import co.yml.charts.ui.linechart.model.LinePlotData
+import co.yml.charts.ui.linechart.model.LineStyle
+import co.yml.charts.ui.linechart.model.LineType
 import com.christophroyer.avybuddy.ui.theme.AvyBuddyTheme
 import com.himanshoe.charty.common.ChartDataCollection
 import com.himanshoe.charty.line.CurveLineChart
@@ -101,24 +109,56 @@ fun MeasurePage(
         if (soundMeasurement.measurementRunning) {
             Text("Measurement in Progress")
         } else {
-            CurveLineChart(
-                dataCollection = ChartDataCollection(soundMeasurement.results),
-                radiusScale = 0F,
-                chartColors = CurvedLineChartColors(
-                    contentColor = listOf(
-                        Color(0xffffaaff),
-                        Color(0xffffaaff)
+//            CurveLineChart(
+//                dataCollection = ChartDataCollection(soundMeasurement.results),
+//                radiusScale = 0F,
+//                chartColors = CurvedLineChartColors(
+//                    contentColor = listOf(
+//                        Color(0xffffaaff),
+//                        Color(0xffffaaff)
+//                    ),
+//                    dotColor = listOf(
+//                        Color(0xffffaaff),
+//                        Color(0xffffaaff)
+//                    ),
+//                    backgroundColors = listOf(
+//                        Color.White,
+//                        Color.White,
+//                    )
+//                ),
+//                lineConfig = LineConfig(false, false, 0F)
+//            )
+            LineChart(
+                modifier = Modifier.fillMaxWidth(),
+                lineChartData = LineChartData(
+                    linePlotData = LinePlotData(
+                        lines = listOf(
+                            Line(
+                                dataPoints = soundMeasurement.results,
+                                LineStyle(lineType = LineType.Straight()),
+                                IntersectionPoint(),
+                            )
+                        )
                     ),
-                    dotColor = listOf(
-                        Color(0xffffaaff),
-                        Color(0xffffaaff)
-                    ),
-                    backgroundColors = listOf(
-                        Color.White,
-                        Color.White,
-                    )
-                ),
-                lineConfig = LineConfig(false, false, 0F)
+                    xAxisData = AxisData.Builder()
+                        .axisStepSize(1.dp)
+                        .backgroundColor(Color.Blue)
+                        .labelAndAxisLinePadding(5.dp)
+                        .steps(20)
+                        .labelData {  i ->
+                            val yScale = ((soundMeasurement.maxX - soundMeasurement.minX) / 100)
+                            (i * yScale + soundMeasurement.minX).toString()
+                        }
+                        .build(),
+                    yAxisData = AxisData.Builder()
+                        .steps(10)
+                        .backgroundColor(Color.Red)
+                        .labelAndAxisLinePadding(10.dp)
+                        .labelData { i ->
+                            val yScale = ((soundMeasurement.maxY - soundMeasurement.minY) / 10)
+                            (i * yScale + soundMeasurement.minY).toString()
+                        }.build()
+                )
             )
         }
     }

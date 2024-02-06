@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.requestPermissions
 import androidx.core.net.toUri
+import co.yml.charts.common.model.Point
 import com.himanshoe.charty.line.model.LineData
 import kotlinx.coroutines.CancellationException
 import org.jtransforms.fft.FloatFFT_1D
@@ -25,6 +26,7 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.concurrent.thread
+import kotlin.math.log
 import kotlin.math.max
 import kotlin.math.min
 
@@ -46,8 +48,11 @@ class SoundMeasurement(private val context: Context) {
     var calibrating = false
 
     private val chunkSize = 1000
-    var results by mutableStateOf(listOf(LineData(1F, 1), LineData(2F,2)))
-
+    var results by mutableStateOf(listOf(Point(0.5f, 40f), Point(1f, 40f), Point(2f, 40f), Point(3f, 60f), Point(4f, 10f)))
+    var maxX by mutableStateOf(0f)
+    var minX by mutableStateOf(10f)
+    var minY by mutableStateOf(0f)
+    var maxY by mutableStateOf(10f)
 
     init {
         player = MediaPlayer.create(context, R.raw.sweep)
@@ -254,18 +259,23 @@ class SoundMeasurement(private val context: Context) {
             val calibrationStream = FileInputStream(rawCalibrationFile)
             val measurementStream = FileInputStream(rawMeasurementFile)
 
-            val values = ArrayList<LineData>()
+            val values = ArrayList<Point>()
+            minX = 0f
+            maxX = 10f
+            minY = 0f
+            maxY = 10f
 //            val bytes = ByteArray(chunkSize * 2)
 //            val fft = FloatFFT_1D(chunkSize.toLong())
             var i = 0
 
-            val numPeriods = 5
-            var lastFrequency = 20.0
+            val numPeriods = 8
+            var lastFrequency = 10.0
             while (calibrationStream.available() > 0 && measurementStream.available() > 0) {
                 var thisChunkSize = (sampleRate * numPeriods / lastFrequency).toInt()
                 if (thisChunkSize == 0) {
                     break
                 }
+                thisChunkSize = chunkSize
                 val bytes = ByteArray(thisChunkSize * 2)
                 val fft = FloatFFT_1D(thisChunkSize.toLong())
                 calibrationStream.read(bytes)
@@ -277,8 +287,8 @@ class SoundMeasurement(private val context: Context) {
                 val freq = floats.indices.maxBy{floats[it]}.toFloat() * thisChunkSize
                 lastFrequency = max(freq.toDouble(), 20.0)
                 lastFrequency = min(lastFrequency, 2000.0)
-                val wavelength = 343.0 / freq
-                val depth = wavelength / 4
+                val wavelength = 343f / freq
+                val depth = wavelength / 4f
                 // amplitude of max frequency
                 val respCalibration = floats.max()
 
@@ -289,7 +299,11 @@ class SoundMeasurement(private val context: Context) {
 
                 val respMeasurement = floats.max()
 
-                values.add(LineData(depth, depth))
+                values.add(Point(freq, respCalibration))
+                minX = min(freq, minX)
+                maxX = max(freq, maxX)
+                minY = min(respCalibration, minY)
+                maxY = max(respMeasurement, maxY)
             }
 
             results = values.toList()
